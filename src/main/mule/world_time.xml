@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="a13d294e-493d-401a-aa7b-d598f4dc9a02">
+		<http:listener-connection host="0.0.0.0" port="8081" />
+	</http:listener-config>
+	<http:request-config name="HTTP_Request_configuration" doc:name="HTTP Request configuration" doc:id="e85e7ef9-702c-453c-8dc2-7f8dd145233a" basePath="/api/timezone">
+		<http:request-connection host='worldtimeapi.org' >
+		</http:request-connection>
+	</http:request-config>
+	<flow name="world_timeFlow" doc:id="40687ce5-879f-4db0-b1e1-cecabde429f6" >
+		<http:listener doc:name="Listener" doc:id="d6b6a9f0-71cf-41ee-97e4-c6e0941212ee" config-ref="HTTP_Listener_config" path="/{region}/{city}"/>
+		<http:request method="GET" doc:name="Request" doc:id="8f4b6b4c-f8d5-42f5-88bc-74f189dcaa63" config-ref="HTTP_Request_configuration" path="/{region}/{city}">
+			<http:uri-params ><![CDATA[#[output application/java
+---
+{
+	city : attributes.uriParams.city,
+	region : attributes.uriParams.region
+}]]]></http:uri-params>
+		</http:request>
+		<ee:transform doc:name="Transform Message" doc:id="416ad877-943e-4cdb-b190-84e595c5ae3e" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/xml
+var readXml = read("<prices>
+    <basic>9.99</basic>
+    <premium>53.00</premium>
+    <vip>398.99</vip>
+    </prices>","application/xml")
+---
+"result" : {
+  "keys" : readXml.prices pluck($$),
+  "values" : readXml.prices pluck($) as Number,
+  "indices" : readXml.prices pluck($$$)
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+</mule>
